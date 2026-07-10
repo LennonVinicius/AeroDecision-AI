@@ -48,7 +48,6 @@ CUSTOM_CSS = """
         padding-bottom: 2rem;
     }
 
-    /* Cards de KPI customizados (usados via st.markdown, não st.metric puro) */
     .kpi-card {
         background-color: #F8F9FA;
         border: 1px solid #E5E7EB;
@@ -68,7 +67,6 @@ CUSTOM_CSS = """
         color: #111827;
     }
 
-    /* Badge de status, tipo "MVP" ou "Compatível" */
     .badge {
         display: inline-block;
         padding: 0.2rem 0.7rem;
@@ -79,7 +77,6 @@ CUSTOM_CSS = """
     .badge-success { background-color: #D1FAE5; color: #065F46; }
     .badge-warning { background-color: #FEF3C7; color: #92400E; }
 
-    /* Deixa os botões primários com cor de marca, não o vermelho padrão do Streamlit */
     div.stButton > button:first-child {
         background-color: #0F4C81;
         color: white;
@@ -93,7 +90,6 @@ CUSTOM_CSS = """
         color: white;
     }
 
-    /* Sidebar com fundo levemente diferente do conteúdo principal, pra separar visualmente */
     section[data-testid="stSidebar"] {
         background-color: #0F172A;
     }
