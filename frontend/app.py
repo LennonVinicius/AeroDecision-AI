@@ -1,8 +1,28 @@
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
+import requests
+from streamlit_searchbox import st_searchbox
+import pandas as pd
+MISSOES_HISTORICO = []
+@st.cache_data()
+def fleet_load():
+
+    aircraft_response = requests.get("http://127.0.0.1:8000/fleet/get_fleet")
+    return pd.DataFrame(aircraft_response.json()) 
+AIRCRAFTS =  fleet_load()
 
 
+def search_airports(searchterm : str):
+    response = requests.get("http://127.0.0.1:8000/airports/search",
+    params = {
+        "q" : searchterm
+              })
+    airports = response.json()
+    return [
+        f"{a['icao']} - {a['name']} ({a['city']})"
+        for a in airports
+    ]
 st.set_page_config(
     page_title="AeroDecisionAI",
     page_icon=" ",
@@ -48,8 +68,8 @@ CUSTOM_CSS = """
         font-size: 0.75rem;
         font-weight: 600;
     }
-    .badge-success { background-color: #D1FAE5; color: #065F46; }
-    .badge-warning { background-color: #FEF3C7; color: #92400E; }
+    .badge-success { background-color: #FF623C; color: #065F46; }
+    .badge-warning { background-color: #25328E; color: #92400E; }
 
     div.stButton > button:first-child {
         background-color: #0F4C81;
@@ -74,23 +94,24 @@ CUSTOM_CSS = """
 """
 st.markdown(CUSTOM_CSS,unsafe_allow_html=True)
 
-with st.sidebar():
+with st.sidebar:
     st.title("AeroDecisionAI")
-    st.markdown('<span class= "badge badge-sucess">MVP</span>',
-                '<span class= "badge badge-warning>AI</span>',
-                '<span class= "badge badge-warning>Telerimetria</span>'
-                )
+    st.markdown(
+        '<span class="badge badge-success">MVP</span> '
+        '<span class="badge badge-warning">AI</span>',
+        unsafe_allow_html=True,
+        )
+    
     st.divider()
     page = st.radio("Navigation",
             ["Nova página", "Dashboard", "Frota"]
             )
     st.divider()
     st.caption("Desenvolvido por Lennon Vinicius de Moraes")
-    st.link_button(url="https://github.com/LennonVinicius")
-    st.link_button(url="https://www.linkedin.com/in/lennon-vinicius-de-moraes-soares-0544a0276/")
+
 
 if page == "Nova página":
-    st.title("Nova missãp")
+    st.title("Nova missão")
     st.markdown("Preencha os campos a abaixo e receba a aeronave recomendada pela IA")
 
     tab_form, tab_text = st.tabs(["Formulário", "Descreva em texto livre"])
@@ -98,20 +119,46 @@ if page == "Nova página":
     with tab_form:
         col1, col2, col3 = st.columns(3)
         with col1:
-            origem = st.selectbox("Origem", ["COLOCAR A LISTA DE AEROPORTOS"])
+            origem = st_searchbox(search_airports, label= "Origem", key="origem_search")
         with col2:
-            destino = st.selectbox("Destino", ["COLOCAR A LISTA DE AEROPORTOS"])
+            destino = st_searchbox(search_airports, label= "Destino", key="destino_search")
         with col3:
             passageiros = st.number_input("Passageiros", min_value=1, max_value=99, value=1)
 
-        col4, col5 = st.tabs(2)
+        col4, col5 = st.columns(2)
 
         with col4:
             tipo = st.selectbox("Tipo de missão", ["Executiva", "Carga", "Regional"])
         with col5:
-            peso = st.number_input("Volume da Carga", min_value=0, max_value=100000000)
-
+            peso = st.number_input("Volume da Carga(Kg)", min_value=1, max_value=100000000)
+        def extrair_icao(texto: str) -> str:
+            return texto.split(" - ")[0].strip()
         buscar = st.button("Gerar recomendação")
+        if buscar:
+            data = {
+                "origin_airport": extrair_icao(origem),
+                "destination_airport": extrair_icao(destino),
+                "mission_type": tipo,
+                "priority": tipo,
+                "passengers": passageiros,
+                "cargo_weight": peso,
+
+            }
+            with st.spinner("Analisando missão e consultando a  IA..."):
+                try:
+                    response = requests.post(
+                        "http://127.0.0.1:8000/recommendation/post_mission",
+                        json=data,
+                        timeout= 120
+                    )
+                except requests.exceptions.Timeout:
+                    st.error("Timeout: a IA demorou demais para responder")
+
+                if response.status_code == 200:
+                    st.session_state["aircraft_info"] = response.json()
+                else:
+                    st.error(f"Erro {response.status_code} : {response.text}")
+
 
         st.divider()
 
@@ -134,15 +181,17 @@ if page == "Nova página":
         with col_ai:
             st.markdown("**Resultado da IA**")
             with st.container(border=True):
-                st.success("✅AQUI TEM QUE TER O NOME DA AERONAVE")
-                st.info("AQUI TEM QUE TER A MENSAGEM GERADA PELA IA")
+                if "aircraft_info" in st.session_state:
+                    aircraft_info = st.session_state["aircraft_info"]
+                    st.success(aircraft_info["best"])
+                    st.info(aircraft_info["resposta"])
 
         st.markdown("**Ranking de aeronaves compatíveis**")
         df_rank = """RECEBE O RANKING"""
 
         fig = go.Figure(go.Bar(
-            x=df_rank["AQUI VAI O FINAL SCORE"],
-            y=df_rank["NOMES DAS AERONAVES"],
+            x=df_rank[1],
+            y=df_rank[2],
             orientation="h",
             marker_color=["#0F4C81" if s == df_rank["final_score"].max() else "#CBD5E1" for s in df_rank["final_score"]],
             text=df_rank["final_score"],
@@ -157,3 +206,69 @@ if page == "Nova página":
             font=dict(family="Inter, sans-serif", size=13),
         )
         st.plotly_chart(fig, use_container_width=True)
+
+elif page == "Dashboard":
+    st.title("Dashboard Operacional")
+    st.caption("Visão geral do uso do Sistema")
+
+    kpi1, kpi2, kpi3 = st.columns(3)
+    for label, value, col in [
+        ("Missões este mês", "25", kpi1),
+        ("Aeronave mais usada", "Phenom 300", kpi2),
+        ("Custo médio/missão", "R$ 4.850", kpi3),
+    ]:
+        with col:
+            st.markdown(
+                f'<div class="kpi-card"><div class="kpi-label">{label}</div>'
+                f'<div class="kpi-value">{value}</div></div>',
+                unsafe_allow_html=True,
+            )
+
+    st.write("")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("**Missões por mês**")
+        fig_line = px.line(MISSOES_HISTORICO, x="mes", y="missoes", markers=True)
+        fig_line.update_traces(line_color="#0F4C81")
+        fig_line.update_layout(
+            height=280, margin=dict(l=10, r=10, t=10, b=10),
+            plot_bgcolor="white", paper_bgcolor="white",
+            font=dict(family="Inter, sans-serif"),
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
+
+    with col_b:
+        st.markdown("**Distribuição por tipo de aeronave**")
+        fig_pie = px.pie(AIRCRAFTS, names="type", hole=0.5,
+                          color_discrete_sequence=["#0F4C81", "#4C9F70", "#CBD5E1"])
+        fig_pie.update_layout(
+            height=280, margin=dict(l=10, r=10, t=10, b=10),
+            font=dict(family="Inter, sans-serif"),
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+else:
+    st.title("Frota cadastrada")
+    st.caption("Aeronaves disponíveis no banco de dados.")
+
+    filtro_tipo = st.multiselect(
+        "Filtrar por tipo",
+        options=AIRCRAFTS["type"].unique(),
+        default=list(AIRCRAFTS["type"].unique()),
+    )
+    df_filtrado = AIRCRAFTS[AIRCRAFTS["type"].isin(filtro_tipo)]
+    st.dataframe(
+        df_filtrado,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "name": st.column_config.TextColumn("Aeronave"),
+            "type": st.column_config.TextColumn("Tipo"),
+            "range_km": st.column_config.NumberColumn("Autonomia (km)", format="%d km"),
+            "max_passengers": st.column_config.NumberColumn("Passageiros"),
+            "cost_hour": st.column_config.NumberColumn("Custo/hora", format="R$ %d"),
+            "final_score": st.column_config.ProgressColumn(
+                "Score", min_value=0, max_value=100, format="%d"
+            ),
+        },
+    )

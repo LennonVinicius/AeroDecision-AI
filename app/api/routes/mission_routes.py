@@ -1,33 +1,35 @@
 from fastapi import FastAPI, APIRouter
 from app.db.entities import Mission
-from db.database import sessionLocal
+from app.db.database import sessionLocal
 from app.schemas.mission_schema import MissionRequest
 from app.services.recommendation_score import RecommendationService
-from services.AI.llm_configuration import LLMService
+from app.services.AI.llm_configuration import LLMService
+from app.services.mission_service import MissionService
+from app.services.distance_service import Route
+from app.services.aircraft_service import Aircraftservice
 router = APIRouter(prefix="/recommendation", tags=["Recommendation"])
 
-@router.post("/")
+@router.post("/post_mission")
 def recommendation(mission : MissionRequest):
-    new_mission = Mission(
-        origin_airport=mission.origin_airport,
-        destination_airport=mission.destination_airport,
-        passengers=mission.passengers,
-        cargo_weight=mission.cargo_weight,
-        priority=mission.priority
-    )
-    try:
-        db = sessionLocal()
-        db.add(new_mission)
-        db.commit()
-        db.refresh(new_mission)
-    finally:
-        db.close()
-    service = RecommendationService()
-    json_recommendation = service.recommendation(new_mission)
-    ai_agent = LLMService()
-    best_aircraft = json_recommendation[0]
-    response_ai_agent = ai_agent.explain(new_mission, best_aircraft[0])
+    rota = Route()
+    distance = rota.calculate_route_distance(mission)
+    mission.distance_km = distance
 
-    return response_ai_agent
+    mission_service = MissionService()
+    new_mission_id = mission_service.create_mission(mission)
+
+    recommendation_service = RecommendationService()
+    json_recommendation = recommendation_service.recommendation(mission, new_mission_id)
+
+
+    
+    best_aircraft_json = json_recommendation[0]
+
+    aircraftservice = Aircraftservice()
+    aircraft = aircraftservice.get_aircraft(best_aircraft_json["name"])
+    ai_agent = LLMService()
+    response_ai_agent = ai_agent.explain(mission, best_aircraft_json, aircraft)
+
+    return {"resposta": response_ai_agent, "best": best_aircraft_json["name"]}
 
     

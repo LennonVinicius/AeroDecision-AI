@@ -4,15 +4,16 @@ from app.services.score_service import ScoreCalculator
 from app.db.entities import AircraftScore
 
 class RecommendationService:
-    def recommendation(self, mission):
+    def recommendation(self, mission, missionid):
         ranking_list = []
         db = sessionLocal()
         try:
             aircrafts = db.query(Aircraft).all()
             for aircraft in aircrafts:
-                calculator = ScoreCalculator(aircraft, mission)
+                calculator = ScoreCalculator(mission, aircraft)
                 final_score = calculator.final_score()
-                score = AircraftScore(mission_id = mission.id,
+                score = AircraftScore(
+                                    mission_id = missionid,
                                     aircraft_id = aircraft.id,
                                     cost_score = calculator.cost_score(),
                                     range_score = calculator.range_score(),

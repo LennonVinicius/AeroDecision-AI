@@ -56,18 +56,18 @@ class Mission(Base):
     estimated_flight_time = Column(Float)
     weather_condition = Column(String)
     required_runway = Column(Float)
-    cargo_volume = Column(Float)
     budget = Column(Float)
 
 class AircraftScore(Base):
     __tablename__ = "aircraft_scores"
     id = Column(Integer, primary_key=True, index=True)
-    distance_km = Column(Float)
-    estimated_flight_time = Column(Float)
-    weather_condition = Column(String)
-    required_runway = Column(Float)
-    cargo_volume = Column(Float)
-    budget = Column(Float)
+    mission_id = Column(Integer, ForeignKey("missions.id"), nullable=False)
+    aircraft_id = Column(Integer, ForeignKey("aircrafts.id"), nullable=False)
+    cost_score = Column(Float, nullable=False)
+    range_score = Column(Float, nullable=False)
+    speed_score = Column(Float, nullable=False)
+    capacity_score = Column(Float, nullable=False)
+    final_score = Column(Float, nullable=False)
 
 class AIRecommendation(Base):
     __tablename__ = "ai_recommendations"

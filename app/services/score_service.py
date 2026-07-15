@@ -15,8 +15,11 @@ class ScoreCalculator():
         return score
     
     def payload_score(self):
-        score = (self.aircraft.max_payload_kg *100)/ self.mission.cargo_volume
-        return score
+        if self.mission.cargo_weight == 0:
+            return 100
+        score = (self.aircraft.max_payload_kg * 100 ) / self.mission.cargo_weight
+        return min(score, 100)
+    
     def speed_score(self):
         score = (self.aircraft.cruise_speed / MAX_CRUISE) * 100
         return score
