@@ -53,10 +53,12 @@ class Mission(Base):
     priority = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     distance_km = Column(Float)
-    estimated_flight_time = Column(Float)
     weather_condition = Column(String)
     required_runway = Column(Float)
-    budget = Column(Float)
+    best_aircraft = Column(String, nullable=True)
+    final_score = Column(Float, nullable=True)
+    mission_time = Column(Float, nullable=True)
+    total_cost = Column(Float, nullable=True)
 
 class AircraftScore(Base):
     __tablename__ = "aircraft_scores"

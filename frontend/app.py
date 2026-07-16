@@ -3,15 +3,55 @@ import plotly.graph_objects as go
 import plotly.express as px
 import requests
 from streamlit_searchbox import st_searchbox
+from streamlit_folium import st_folium
 import pandas as pd
-MISSOES_HISTORICO = []
+import folium
+from folium import Map
+
+def router_map( origin_lat, origin_lon, destination_lat, destination_lon, origin_name, destination_name):
+    center_lat = (origin_lat + destination_lat)/2
+    center_lon = (origin_lon + destination_lon)/2
+
+    map = Map(location=[center_lat, center_lon], zoom_start= 5, tiles="cartodbpositron")
+    folium.Marker(
+            location=[destination_lat, destination_lon],
+            popup= destination_name,
+            tooltip="Destino",
+            icon=folium.Icon(color="blue", icon="plane-departure", prefix="fa")
+    ).add_to(map)
+
+    folium.Marker(
+            location=[origin_lat, origin_lon],
+            popup= origin_name,
+            tooltip="Origem",
+            icon=folium.Icon(color="red", icon="plane-arrival", prefix= "fa")
+    ).add_to(map)
+
+    folium.PolyLine(
+            locations=[[origin_lat,origin_lon],[destination_lat, destination_lon]],
+            color = "#FF0000",
+            weight = 3,
+            opacity = 0.8,
+            dash_array = "10, 5"
+    ).add_to(map)
+    return map
+
+historic_response = requests.get(
+    "http://127.0.0.1:8000/recommendation/historic_missions"
+)
+MISSOES_HISTORICO = pd.DataFrame(historic_response.json())
+print(MISSOES_HISTORICO)
+dark = st.get_option("theme.base") == "dark"
+font_color = "white" if dark else "black"
+background = "#0E1117" if dark else "white"
+grid = "#374151" if dark else "#E5E7EB"
+
 @st.cache_data()
 def fleet_load():
-
     aircraft_response = requests.get("http://127.0.0.1:8000/fleet/get_fleet")
     return pd.DataFrame(aircraft_response.json()) 
 AIRCRAFTS =  fleet_load()
-
+print(AIRCRAFTS)
 
 def search_airports(searchterm : str):
     response = requests.get("http://127.0.0.1:8000/airports/search",
@@ -163,21 +203,48 @@ if page == "Nova página":
         st.divider()
 
         st.subheader("Resultados da análise")
-
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        if "aircraft_info" in st.session_state:
+            aircraft_info = st.session_state["aircraft_info"]
+            kpis = [
+                ("Distância (Km)", f'{aircraft_info["distance"]:.2f}', kpi1),
+                ("Tempo de voo(Horas)", f'{aircraft_info["mission_time"]:.2f}', kpi2),
+                ("Custo estimado (US$)", f'{aircraft_info["total_cost"]:.2f}', kpi3),
+                ("Score da Aeronave escolhida", f'{aircraft_info["final_score"]:.1f}', kpi4)
+            ]
 
-        kpis = [
-            ("Distância", "AQUI É O CALCULO DA DISTANCIA", kpi1),
-            ("Tempo de voo", "CALCULAR TEMPO DE VOO", kpi2),
-            ("Custo estimado", "CALCULAR O CUSTO ESTIMADO", kpi3),
-            ("Score da Aeronave escolhida", "COLOCAR O SCORE FINAL", kpi4)
-        ]
+            for label, value, col in kpis:
+                with col:
+                    st.markdown(
+                        f"""
+                        <div class="kpi-card">
+                            <div class="kpi-label">{label}</div>
+                            <div class="kpi-value">{value}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
         col_map, col_ai = st.columns(2)
 
         with col_map:
             st.markdown("**Rota**")
             with st.container(border=True):
-                st.info("AQUI TEM QUE TER O MAPA")
+                if "aircraft_info" in st.session_state:
+                    aircraft_info = st.session_state["aircraft_info"]
+
+                    map =router_map(
+                        aircraft_info["origem_lat"],
+                        aircraft_info["origem_lon"],
+                        aircraft_info["destino_lat"],
+                        aircraft_info["destino_lon"],
+                        aircraft_info["origin_name"],
+                        aircraft_info["destination_name"]
+                        )
+
+                    st_folium(map, use_container_width=True, height=300)
+                else:
+                    st.info("Gere uma recomendação para visualizar  a rota")
         with col_ai:
             st.markdown("**Resultado da IA**")
             with st.container(border=True):
@@ -186,36 +253,61 @@ if page == "Nova página":
                     st.success(aircraft_info["best"])
                     st.info(aircraft_info["resposta"])
 
-        st.markdown("**Ranking de aeronaves compatíveis**")
-        df_rank = """RECEBE O RANKING"""
+   
+        if "aircraft_info" in st.session_state:
+            aircraft_info = st.session_state["aircraft_info"]
+            ranking_list = aircraft_info.get("ranking", [])
+            if ranking_list:
+                df_rank =pd.DataFrame(ranking_list)
+                st.markdown("**Ranking de aeronaves compatíveis**")
+                df_rank =df_rank.sort_values("final_score", ascending = True)
 
-        fig = go.Figure(go.Bar(
-            x=df_rank[1],
-            y=df_rank[2],
-            orientation="h",
-            marker_color=["#0F4C81" if s == df_rank["final_score"].max() else "#CBD5E1" for s in df_rank["final_score"]],
-            text=df_rank["final_score"],
-            textposition="outside",
-        ))
-        fig.update_layout(
-            height=260,
-            margin=dict(l=10, r=10, t=10, b=10),
-            xaxis=dict(range=[0, 100], showgrid=True, gridcolor="#F1F5F9"),
-            plot_bgcolor="white",
-            paper_bgcolor="white",
-            font=dict(family="Inter, sans-serif", size=13),
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
+                fig = go.Figure(go.Bar(
+                    x=df_rank["final_score"],
+                    y=df_rank["name"],
+                    orientation="h",
+                    marker_color=["#0F4C81" if s == df_rank["final_score"].max() else "#CBD5E1" for s in df_rank["final_score"]],
+                    text=df_rank["final_score"].round(1),
+                    textposition="outside",
+                    
+                ))
+                fig.update_layout(
+                    font=dict(color = font_color),
+                    height=260,
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    xaxis=dict(range=[0, 100], showgrid=True, gridcolor=grid, tickfont = dict(color=font_color)),
+                    yaxis = dict(tickfont=dict(color=font_color)),
+                    plot_bgcolor=background,
+                    paper_bgcolor=background,
+        
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Nenhum ranking disponível para esta missão")
 elif page == "Dashboard":
     st.title("Dashboard Operacional")
     st.caption("Visão geral do uso do Sistema")
 
+    missions_month_response = requests.get(
+        "http://127.0.0.1:8000/dashboard/get_missions_month",
+        timeout= 120
+    )
+    missions_month_response_json = missions_month_response.json()
+    aircraft_most_used = requests.get(
+        "http://127.0.0.1:8000/dashboard/get_most_used_aircraft",
+        timeout= 120
+    )
+    aircraft_most_used_json = aircraft_most_used.json()
+    cost_per_mission = requests.get(
+        "http://127.0.0.1:8000/dashboard/cost",
+        timeout= 120
+    )
+    cost_per_mission_json =  cost_per_mission.json()
     kpi1, kpi2, kpi3 = st.columns(3)
     for label, value, col in [
-        ("Missões este mês", "25", kpi1),
-        ("Aeronave mais usada", "Phenom 300", kpi2),
-        ("Custo médio/missão", "R$ 4.850", kpi3),
+        ("Missões este mês", missions_month_response_json, kpi1),
+        ("Aeronave mais usada", aircraft_most_used_json["aircraft"], kpi2),
+        ("Custo médio/missão", f'{cost_per_mission_json:.2f}', kpi3),
     ]:
         with col:
             st.markdown(
@@ -227,8 +319,14 @@ elif page == "Dashboard":
     st.write("")
     col_a, col_b = st.columns(2)
     with col_a:
+        df_missoes = MISSOES_HISTORICO.copy()
+        df_missoes["created_at"] = pd.to_datetime(df_missoes["created_at"])
+        df_missoes["mes"] = df_missoes["created_at"].dt.to_period("M").astype(str)
+        missoes_por_mes = df_missoes.groupby("mes").size().reset_index(name="total_missoes")
+
+
         st.markdown("**Missões por mês**")
-        fig_line = px.line(MISSOES_HISTORICO, x="mes", y="missoes", markers=True)
+        fig_line = px.line(missoes_por_mes, x="mes", y="total_missoes", markers=True)
         fig_line.update_traces(line_color="#0F4C81")
         fig_line.update_layout(
             height=280, margin=dict(l=10, r=10, t=10, b=10),
@@ -239,7 +337,13 @@ elif page == "Dashboard":
 
     with col_b:
         st.markdown("**Distribuição por tipo de aeronave**")
-        fig_pie = px.pie(AIRCRAFTS, names="type", hole=0.5,
+        response_type = requests.get(
+            "http://127.0.0.1:8000/dashboard/aircraft_by_type",
+            timeout= 120
+        )
+        per_type = pd.DataFrame(response_type.json())
+        
+        fig_pie = px.pie(per_type, names="aircraft_type", hole=0.5,
                           color_discrete_sequence=["#0F4C81", "#4C9F70", "#CBD5E1"])
         fig_pie.update_layout(
             height=280, margin=dict(l=10, r=10, t=10, b=10),
@@ -253,22 +357,20 @@ else:
 
     filtro_tipo = st.multiselect(
         "Filtrar por tipo",
-        options=AIRCRAFTS["type"].unique(),
-        default=list(AIRCRAFTS["type"].unique()),
+        options=AIRCRAFTS["aircraft_type"].unique(),
+        default=list(AIRCRAFTS["aircraft_type"].unique()),
     )
-    df_filtrado = AIRCRAFTS[AIRCRAFTS["type"].isin(filtro_tipo)]
+    df_filtrado = AIRCRAFTS[AIRCRAFTS["aircraft_type"].isin(filtro_tipo)]
     st.dataframe(
         df_filtrado,
         use_container_width=True,
         hide_index=True,
         column_config={
             "name": st.column_config.TextColumn("Aeronave"),
-            "type": st.column_config.TextColumn("Tipo"),
+            "aircraft_type": st.column_config.TextColumn("Tipo"),
+            "manufacturer": st.column_config.TextColumn("Manufatura"),
             "range_km": st.column_config.NumberColumn("Autonomia (km)", format="%d km"),
             "max_passengers": st.column_config.NumberColumn("Passageiros"),
-            "cost_hour": st.column_config.NumberColumn("Custo/hora", format="R$ %d"),
-            "final_score": st.column_config.ProgressColumn(
-                "Score", min_value=0, max_value=100, format="%d"
-            ),
+            "cost_hour": st.column_config.NumberColumn("Custo/hora", format="R$ %d")
         },
     )

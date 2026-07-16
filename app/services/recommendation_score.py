@@ -11,7 +11,6 @@ class RecommendationService:
             aircrafts = db.query(Aircraft).all()
             for aircraft in aircrafts:
                 calculator = ScoreCalculator(mission, aircraft)
-                final_score = calculator.final_score()
                 score = AircraftScore(
                                     mission_id = missionid,
                                     aircraft_id = aircraft.id,
@@ -27,7 +26,7 @@ class RecommendationService:
                                      "range_score" : calculator.range_score(),
                                      "speed_score" : calculator.speed_score(),
                                      "capacity_score": calculator.capacity_score(),
-                                     "final_score" : final_score})
+                                     "final_score" : calculator.final_score()})
             db.commit()
         finally:
             db.close()

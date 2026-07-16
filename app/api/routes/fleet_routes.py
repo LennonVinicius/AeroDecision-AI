@@ -1,16 +1,12 @@
 from fastapi import APIRouter
-from app.db.database import sessionLocal
-from app.db.entities import Aircraft
 from app.schemas.aircraft_schema import AircraftResponse
+from app.services.aircraft_service import Aircraftservice
 from typing import List
 router = APIRouter(prefix="/fleet")
 
-@router.get("/get_fleet", response_model=list[AircraftResponse])
-def get_fleet():
-    db = sessionLocal()
-    try:
-        fleet = db.query(Aircraft).all()
-        return fleet 
-    finally:
-        db.close()
-    
+@router.get("/get_fleet", response_model=List[AircraftResponse])
+def get_fleet_total():
+    aircraft_service =  Aircraftservice()
+    lista = aircraft_service.get_fleet()
+    print(lista)
+    return lista
