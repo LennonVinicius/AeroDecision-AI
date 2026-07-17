@@ -69,6 +69,7 @@ class AircraftScore(Base):
     range_score = Column(Float, nullable=False)
     speed_score = Column(Float, nullable=False)
     capacity_score = Column(Float, nullable=False)
+    weather_score = Column(Float)
     final_score = Column(Float, nullable=False)
 
 class AIRecommendation(Base):

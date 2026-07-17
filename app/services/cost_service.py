@@ -15,7 +15,7 @@ class CostService:
         inicio_mes = datetime(today.year, today.month, 1)
         db = sessionLocal()
         try:
-            media= db.query(Mission.total_cost).filter(Mission.created_at>=inicio_mes).scalar()
+            media= db.query(func.avg(Mission.total_cost)).filter(Mission.created_at>=inicio_mes).scalar()
             return media if media is not None else 0
         finally:
             db.close()

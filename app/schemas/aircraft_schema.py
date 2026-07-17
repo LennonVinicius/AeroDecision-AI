@@ -11,3 +11,4 @@ class AircraftResponse(BaseModel):
     operational_cost_hour: float
     class Config:
         from_attributes = True 
+

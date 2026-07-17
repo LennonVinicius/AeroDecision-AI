@@ -13,6 +13,7 @@ class Route:
         origem = (origin_airport.latitude, origin_airport.longitude)
         destino = (destination_airport.latitude, destination_airport.longitude)
         return geodesic(origem, destino).km
+    
     def routes_coords(self, mission):
         db = sessionLocal()
         try:
@@ -24,3 +25,16 @@ class Route:
         destino = [destination_airport.latitude, destination_airport.longitude]
 
         return {"origem": origem, "destino": destino}
+    def coords_airports(self, mission):
+        db = sessionLocal()
+        try:
+            origin_airport = db.query(Airport).filter(Airport.icao == mission.origin_airport).first()
+            destination_airport = db.query(Airport).filter(Airport.icao == mission.destination_airport).first()
+        finally:
+            db.close()
+
+        return {"origin_lat": origin_airport.latitude, 
+                "origin_lon": origin_airport.longitude,
+                "destination_lat": destination_airport.latitude,
+                "destination_lon": destination_airport.longitude
+                }

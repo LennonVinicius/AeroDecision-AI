@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter
 from app.db.entities import Mission
 from app.db.database import sessionLocal
 from app.schemas.mission_schema import MissionRequest
+from app.schemas.mission_schema import MissionResponse
 from app.services.recommendation_score import RecommendationService
 from app.services.AI.llm_configuration import LLMService
 from app.services.mission_service import MissionService
@@ -53,7 +54,16 @@ def recommendation(mission : MissionRequest):
         "resposta": response_ai_agent,
         "ranking" : ranking_list, 
         "best": best_aircraft_json["name"], 
-        "distance": distance, 
+        "distance": distance,
+        "capacity_score": best_aircraft_json["capacity_score"],
+        "speed_score": best_aircraft_json["speed_score"],
+        "weather_score": best_aircraft_json["weather_score"],
+        "avg_wind": best_aircraft_json["avg_wind"],
+        "avg_visibility": best_aircraft_json["avg_visibility"],
+        "avg_precipitation": best_aircraft_json["avg_precipitation"],    
+        "avg_temperature": best_aircraft_json["avg_temperature"],
+        "cost_score": best_aircraft_json["cost_score"],
+        "range_score": best_aircraft_json["range_score"],
         "final_score": best_aircraft_json["final_score"],
         "mission_time": mission_time,
         "total_cost": total_cost,
@@ -63,11 +73,12 @@ def recommendation(mission : MissionRequest):
         "destino_lon" : destino[1],
         "origin_name": mission.origin_airport,
         "destination_name" : mission.destination_airport,
+        "mission_id": new_mission_id
         }
     
     return  info_dict
 
-@router.get("/historic_missions", response_model=List[MissionRequest])
+@router.get("/historic_missions", response_model=List[MissionResponse])
 def historic_missions():
     mission_service = MissionService()
     lista = mission_service.historic_missions()

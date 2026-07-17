@@ -1,11 +1,13 @@
 from app.db.entities import Mission, Aircraft
+from app.services.distance_service import Route
 MAX_CRUISE = 870
 MAX_COST = 11500
 
 class ScoreCalculator():
-    def __init__(self, mission : Mission, aircraft : Aircraft):
+    def __init__(self, mission : Mission, aircraft : Aircraft, weather_score):
         self.aircraft = aircraft
         self.mission = mission
+        self.weather_score = weather_score
         
     def range_score(self):
         if self.mission.distance_km == 0:
@@ -16,10 +18,6 @@ class ScoreCalculator():
     def capacity_score(self):
         score = (self.aircraft.max_passengers * 100) / self.mission.passengers
         return min(score, 100)
-    
-    def payload_score(self):
-        if self.mission.cargo_weight == 0:
-            return 100
         score = (self.aircraft.max_payload_kg * 100 ) / self.mission.cargo_weight
         return min(score, 100)
     def speed_score(self):
@@ -28,11 +26,30 @@ class ScoreCalculator():
     def cost_score(self):
         score = (1 - (self.aircraft.operational_cost_hour / MAX_COST)) * 100
         return max(score, 0)
+    
     def final_score(self):
         if not self.is_feasible():
             return 0
-        final = self.range_score() *0.30 + self.capacity_score() *0.25 + self.payload_score() *0.20 +self.speed_score() *0.15 + self.cost_score() * 0.10
-        return final
+        final_score = (
+            self.capacity_score() * 0.30 +
+            self.range_score() * 0.25 +
+            self.cost_score() * 0.20 +
+            self.speed_score() * 0.10 +
+            self.weather_score * 0.15
+        )
+        return final_score
+
+        if not self.is_feasible():
+            return 0
+        final_score = (
+            self.capacity_score() * 0.30 +
+            self.range_score() * 0.25 +
+            self.cost_score() * 0.20 +
+            self.speed_score() * 0.10 +
+            weather_score * 0.15
+        )
+        return final_score
+    
     def is_feasible(self):
         return (
             self.aircraft.range_km >= self.mission.distance_km and

@@ -418,5 +418,26 @@
     "engine_model": "Lycoming IO-540-K1J5D",
     "engines": 1,
     "source": "Dados oficiais Embraer (Ipanema EMB-202/203)"
-  }
+  },
+  {
+  "name": "Phenom 300E Autoland",
+  "manufacturer": "Embraer",
+  "family": "Phenom",
+  "aircraft_type": "Executive",
+  "range_km": 3724,
+  "max_passengers": 10,
+  "max_payload_kg": 1267,
+  "cruise_speed": 839,
+  "fuel_consumption": 430,
+  "mission_type": "Executive",
+  "runway_requirement": 975,
+  "operational_cost_hour": 1750,
+  "mtow_kg": 8300,
+  "landing_weight_kg": 7630,
+  "usable_fuel_kg": 2780,
+  "service_ceiling_ft": 45000,
+  "engine_model": "Pratt & Whitney Canada PW535E1",
+  "engines": 2,
+  "source": "Embraer Phenom 300E (2025) + Garmin Emergency Autoland"
+}
 ]
