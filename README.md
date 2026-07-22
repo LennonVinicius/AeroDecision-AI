@@ -134,7 +134,7 @@ Results are presented through an interactive dashboard containing:
 
 <p align="center">
 
-[![Demo](https://img.shields.io/badge/▶️-Watch%20Demo-blue?style=for-the-badge)](https://youtu.be/TXjeS_BfjLw))
+[![Demo](https://img.shields.io/badge/▶️-Watch%20Demo-blue?style=for-the-badge)](https://youtu.be/TXjeS_BfjLw)
 
 </p>
 
